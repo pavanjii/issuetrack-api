@@ -1,0 +1,5 @@
+node_modules/
+src/data/issues.json
+tests/test-issues.json
+.env
+*.log

@@ -1,40 +1,49 @@
 # IssueTrack API
 
-A small REST API for logging and triaging defects/issues across backend
-services — tracking status, priority, and which service each issue affects,
-with filtering support. Built with Node.js and Express.
+A small REST API for logging and triaging defects/issues across backend services — tracking status, priority, and which service each issue affects, with filtering support. Built with Node.js and Express.
 
-Design note: persistence is a JSON file on disk (`src/data/store.js`)
-rather than a database server, so the project has zero external
-dependencies and can be deployed anywhere Node runs. The store module is
-the only place that knows about storage — swapping it for Postgres/MySQL
-later wouldn't require touching the routes or controllers.
+## Design
+
+Persistence uses a JSON file on disk (`src/data/store.js`) rather than a database server. The store module is the only component responsible for storage, so replacing it with PostgreSQL or MySQL later would not require changes to the routes or controllers.
 
 ## Endpoints
 
-| Method | Path                | Description                                      |
-|--------|---------------------|---------------------------------------------------|
-| GET    | `/health`           | Liveness check                                     |
-| GET    | `/issues`           | List issues (supports `?status=`, `?priority=`, `?service=`) |
-| GET    | `/issues/:id`       | Get a single issue                                 |
-| POST   | `/issues`           | Create an issue                                    |
-| PATCH  | `/issues/:id`       | Update fields on an issue                          |
-| DELETE | `/issues/:id`       | Delete an issue                                    |
+| Method | Path | Description |
+|---|---|---|
+| GET | `/health` | Liveness check |
+| GET | `/issues` | List issues; supports `?status=`, `?priority=`, and `?service=` |
+| GET | `/issues/:id` | Get a single issue |
+| POST | `/issues` | Create an issue |
+| PATCH | `/issues/:id` | Update issue fields |
+| DELETE | `/issues/:id` | Delete an issue |
 
-**Issue fields:** `title` (required), `description`, `status`
-(`open` | `in_progress` | `resolved` | `closed`, default `open`),
-`priority` (`low` | `medium` | `high` | `critical`, default `medium`),
-`service` (free text, e.g. `"card-issuer-gateway"`).
+**Issue fields**
 
-### Example
+- `title` — required
+- `description` — optional
+- `status` — `open`, `in_progress`, `resolved`, or `closed`; defaults to `open`
+- `priority` — `low`, `medium`, `high`, or `critical`; defaults to `medium`
+- `service` — free text, such as `card-issuer-gateway`
+
+## Example requests
+
+Create an issue:
 
 ```bash
 curl -X POST http://localhost:3000/issues \
   -H "Content-Type: application/json" \
   -d '{"title":"Card issuer timeout on auth callback","priority":"high","service":"card-issuer-gateway"}'
+```
 
+Filter issues by priority:
+
+```bash
 curl "http://localhost:3000/issues?priority=high"
+```
 
+Update an issue:
+
+```bash
 curl -X PATCH http://localhost:3000/issues/<id> \
   -H "Content-Type: application/json" \
   -d '{"status":"resolved"}'
@@ -44,31 +53,66 @@ curl -X PATCH http://localhost:3000/issues/<id> \
 
 ```bash
 npm install
-npm start          # http://localhost:3000
-npm run dev         # auto-restart on file changes
-npm test            # 11 tests: CRUD, filtering, validation, 404s
+npm start
+npm run dev
+npm test
+npm run coverage
 ```
 
-## Deploy (Render, free tier, no credit card)
+The API runs at `http://localhost:3000` by default.
 
-1. Push this project to a GitHub repo.
-2. Go to [render.com](https://render.com) → sign up / log in with GitHub.
-3. **New +** → **Web Service** → select this repo.
-4. Settings:
+## Test coverage
+
+Coverage is measured with **c8** and Node.js's built-in test runner.
+
+| Metric | Result |
+|---|---:|
+| Automated tests passed | 30/30 |
+| Statement coverage | 100% |
+| Line coverage | 100% |
+| Function coverage | 100% |
+| Branch coverage | 98.52% |
+
+Run `npm test` to execute the tests and `npm run coverage` to generate a fresh coverage report.
+
+## Deployed API performance
+
+**Platform:** Render  
+**Endpoint tested:** `GET /health`  
+**Methodology:** 30 sequential requests measured from a local Windows PowerShell client.
+
+| Metric | Measured result |
+|---|---:|
+| Requests successful | 30/30 |
+| Success rate during test | 100% |
+| Minimum response time | 218.83 ms |
+| Median response time | 263.32 ms |
+| P95 response time | 1,172.17 ms |
+| Maximum response time | 22,138.34 ms |
+
+These measurements include network and client overhead. The first request was significantly slower than subsequent requests, potentially due to a cold start or startup delay. This is an initial benchmark, not a comprehensive load test.
+
+**Live health endpoint:** https://issuetrack-api-v95s.onrender.com/health
+
+## Deploy on Render
+
+1. Push the project to a GitHub repository.
+2. Sign in to [Render](https://render.com).
+3. Select **New + → Web Service** and connect the repository.
+4. Configure the service:
+
    - **Environment:** Node
-   - **Build Command:** `npm install`
-   - **Start Command:** `npm start`
-   - **Instance Type:** Free
-5. Deploy. Render gives you a public URL like `https://issuetrack-api.onrender.com`.
+   - **Build command:** `npm install`
+   - **Start command:** `npm start`
+   - **Instance type:** Free, if available for your account
 
-Note: free-tier services spin down after 15 minutes of inactivity, so the
-first request after a quiet period takes 30–60 seconds to wake up. That's
-expected on the free tier — mention it if you demo this live rather than
-letting it look like a bug.
+5. Deploy and use the public URL provided by Render.
+
+Free-instance availability and behavior may change. The first request after inactivity can be significantly slower than subsequent requests.
 
 ## Possible next steps
 
-- Swap the JSON-file store for a real database (Postgres works well on
-  Render's free tier) — the store module is the only file that would change.
-- Add simple API-key auth on write endpoints.
-- Add pagination to `GET /issues` once the dataset is large enough to need it.
+- Replace JSON-file persistence with PostgreSQL.
+- Add API-key authentication to write endpoints.
+- Add pagination to `GET /issues` as the dataset grows.
+- Expand performance testing to include issue creation, retrieval, filtering, and updates.

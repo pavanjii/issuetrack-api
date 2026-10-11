@@ -1,118 +1,315 @@
 # IssueTrack API
 
-A small REST API for logging and triaging defects/issues across backend services — tracking status, priority, and which service each issue affects, with filtering support. Built with Node.js and Express.
+A lightweight REST API for creating, tracking, and triaging software
+issues. Built with **Node.js** and **Express**, IssueTrack supports CRUD
+operations, issue filtering, automated tests, and a live deployment on
+Render.
 
-## Design
+## Live Demo
 
-Persistence uses a JSON file on disk (`src/data/store.js`) rather than a database server. The store module is the only component responsible for storage, so replacing it with PostgreSQL or MySQL later would not require changes to the routes or controllers.
+-   **Health check:** https://issuetrack-api-v95s.onrender.com/health
+-   **Issues endpoint:** https://issuetrack-api-v95s.onrender.com/issues
 
-## Endpoints
+> **Hosting note:** The service is deployed on Render's free tier. It
+> may take a while to respond after a period of inactivity because the
+> service can enter a cold-start state. The API currently uses JSON-file
+> persistence, so it should be treated as a demonstration project rather
+> than a production database-backed service.
 
-| Method | Path | Description |
-|---|---|---|
-| GET | `/health` | Liveness check |
-| GET | `/issues` | List issues; supports `?status=`, `?priority=`, and `?service=` |
-| GET | `/issues/:id` | Get a single issue |
-| POST | `/issues` | Create an issue |
-| PATCH | `/issues/:id` | Update issue fields |
-| DELETE | `/issues/:id` | Delete an issue |
+## Features
 
-**Issue fields**
+-   RESTful endpoints for issue management
+-   Create, retrieve, update, and delete issues
+-   Filter issues by status, priority, and service
+-   Input validation for required fields
+-   JSON-file persistence
+-   Automated API tests
+-   Test coverage reporting
+-   Deployment on Render
 
-- `title` — required
-- `description` — optional
-- `status` — `open`, `in_progress`, `resolved`, or `closed`; defaults to `open`
-- `priority` — `low`, `medium`, `high`, or `critical`; defaults to `medium`
-- `service` — free text, such as `card-issuer-gateway`
+## Tech Stack
 
-## Example requests
+-   **Runtime:** Node.js
+-   **Web framework:** Express
+-   **Data persistence:** JSON file (`src/data/store.js`)
+-   **Testing:** Node.js API test suite (run with the project's npm
+    scripts)
+-   **Hosting:** Render
 
-Create an issue:
+## API Endpoints
 
-```bash
-curl -X POST http://localhost:3000/issues \
+Base URL:
+
+``` text
+https://issuetrack-api-v95s.onrender.com
+```
+
+For local development, use:
+
+``` text
+http://localhost:3000
+```
+
+  Method     Endpoint        Description
+  ---------- --------------- ------------------------------------
+  `GET`      `/health`       Check whether the API is running
+  `GET`      `/issues`       List issues; supports filtering
+  `GET`      `/issues/:id`   Retrieve one issue by ID
+  `POST`     `/issues`       Create an issue
+  `PATCH`    `/issues/:id`   Update fields on an existing issue
+  `DELETE`   `/issues/:id`   Delete an issue
+
+### Issue fields
+
+An issue can contain the following fields:
+
+  -----------------------------------------------------------------------
+  Field                               Purpose
+  ----------------------------------- -----------------------------------
+  `title`                             Issue title; required when creating
+                                      an issue
+
+  `description`                       Additional details about the issue
+
+  `status`                            Current workflow status; defaults
+                                      to `open`
+
+  `priority`                          Issue priority; defaults to
+                                      `medium`
+
+  `service`                           Service or component associated
+                                      with the issue; free-text field
+
+  `id`                                Identifier assigned to the issue by
+                                      the API
+  -----------------------------------------------------------------------
+
+The API may also return metadata maintained by the application. Use the
+actual response from the running API as the source of truth for fields
+not listed above.
+
+## Example Requests
+
+Examples below use `curl`. Replace the base URL with
+`http://localhost:3000` when testing locally.
+
+### 1. Health check
+
+``` bash
+curl https://issuetrack-api-v95s.onrender.com/health
+```
+
+### 2. List issues
+
+``` bash
+curl https://issuetrack-api-v95s.onrender.com/issues
+```
+
+### 3. Filter issues
+
+Filter by status, priority, or service using query parameters:
+
+``` bash
+curl "https://issuetrack-api-v95s.onrender.com/issues?status=open"
+curl "https://issuetrack-api-v95s.onrender.com/issues?priority=high"
+curl "https://issuetrack-api-v95s.onrender.com/issues?service=payments"
+```
+
+Use values that exist in your data and are supported by the current
+application.
+
+### 4. Retrieve an issue by ID
+
+``` bash
+curl "https://issuetrack-api-v95s.onrender.com/issues/REPLACE_WITH_ISSUE_ID"
+```
+
+Replace `REPLACE_WITH_ISSUE_ID` with an ID returned by `GET /issues`.
+
+### 5. Create an issue
+
+``` bash
+curl -X POST "https://issuetrack-api-v95s.onrender.com/issues" \
   -H "Content-Type: application/json" \
-  -d '{"title":"Card issuer timeout on auth callback","priority":"high","service":"card-issuer-gateway"}'
+  -d '{
+    "title": "Checkout request returns an error",
+    "description": "A checkout request fails for the test scenario.",
+    "priority": "high",
+    "service": "checkout"
+  }'
 ```
 
-Filter issues by priority:
+The `title` is required. If `status` and `priority` are omitted, the
+documented defaults are `open` and `medium`, respectively.
 
-```bash
-curl "http://localhost:3000/issues?priority=high"
-```
+### 6. Update an issue
 
-Update an issue:
-
-```bash
-curl -X PATCH http://localhost:3000/issues/<id> \
+``` bash
+curl -X PATCH "https://issuetrack-api-v95s.onrender.com/issues/REPLACE_WITH_ISSUE_ID" \
   -H "Content-Type: application/json" \
-  -d '{"status":"resolved"}'
+  -d '{
+    "status": "in_progress",
+    "priority": "high"
+  }'
 ```
 
-## Run locally
+`PATCH` is intended for partial updates. Use a real issue ID and values
+accepted by the running application.
 
-```bash
+### 7. Delete an issue
+
+``` bash
+curl -X DELETE "https://issuetrack-api-v95s.onrender.com/issues/REPLACE_WITH_ISSUE_ID"
+```
+
+Use a test issue when experimenting with deletion.
+
+## Run Locally
+
+### Prerequisites
+
+-   Node.js and npm installed
+-   Git installed if cloning the repository
+
+### 1. Clone the repository
+
+``` bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd <YOUR_REPOSITORY_DIRECTORY>
+```
+
+Replace the placeholders with the repository URL and directory name.
+
+### 2. Install dependencies
+
+``` bash
 npm install
-npm start
-npm run dev
-npm test
-npm run coverage
 ```
 
-The API runs at `http://localhost:3000` by default.
+### 3. Start the application
 
-## Test coverage
+``` bash
+npm start
+```
 
-Coverage is measured with **c8** and Node.js's built-in test runner.
+For development, if the project defines a development script:
 
-| Metric | Result |
-|---|---:|
-| Automated tests passed | 30/30 |
-| Statement coverage | 100% |
-| Line coverage | 100% |
-| Function coverage | 100% |
-| Branch coverage | 98.52% |
+``` bash
+npm run dev
+```
 
-Run `npm test` to execute the tests and `npm run coverage` to generate a fresh coverage report.
+The local API is expected to be available at `http://localhost:3000`
+when configured to use port `3000`. If the application uses a
+configurable port, follow the value set in its configuration.
 
-## Deployed API performance
+## Run Tests
 
-**Platform:** Render  
-**Endpoint tested:** `GET /health`  
-**Methodology:** 30 sequential requests measured from a local Windows PowerShell client.
+Execute the automated test suite:
 
-| Metric | Measured result |
-|---|---:|
-| Requests successful | 30/30 |
-| Success rate during test | 100% |
-| Minimum response time | 218.83 ms |
-| Median response time | 263.32 ms |
-| P95 response time | 1,172.17 ms |
-| Maximum response time | 22,138.34 ms |
+``` bash
+npm test
+```
 
-These measurements include network and client overhead. The first request was significantly slower than subsequent requests, potentially due to a cold start or startup delay. This is an initial benchmark, not a comprehensive load test.
+The project's test suite has been run successfully with the following
+results:
 
-**Live health endpoint:** https://issuetrack-api-v95s.onrender.com/health
+-   **Tests passed:** 30
+-   **Statements coverage:** 100%
+-   **Lines coverage:** 100%
+-   **Functions coverage:** 100%
+-   **Branches coverage:** 98.52%
 
-## Deploy on Render
+These figures reflect the test run recorded during development; rerun
+the test command against the current checkout to reproduce them.
 
-1. Push the project to a GitHub repository.
-2. Sign in to [Render](https://render.com).
-3. Select **New + → Web Service** and connect the repository.
-4. Configure the service:
+## Deployment
 
-   - **Environment:** Node
-   - **Build command:** `npm install`
-   - **Start command:** `npm start`
-   - **Instance type:** Free, if available for your account
+The API is deployed on **Render**.
 
-5. Deploy and use the public URL provided by Render.
+Typical Render settings for this project:
 
-Free-instance availability and behavior may change. The first request after inactivity can be significantly slower than subsequent requests.
+-   **Build command:** `npm install`
+-   **Start command:** `npm start`
 
-## Possible next steps
+After deployment, verify the service using `/health`, then test the
+collection endpoint `/issues`.
 
-- Replace JSON-file persistence with PostgreSQL.
-- Add API-key authentication to write endpoints.
-- Add pagination to `GET /issues` as the dataset grows.
-- Expand performance testing to include issue creation, retrieval, filtering, and updates.
+### Deployment and performance observations
+
+A benchmark of the deployed `/health` endpoint recorded:
+
+  Metric                                                          Result
+  ---------------------------------------- -----------------------------
+  Successful requests                                              30/30
+  Median response time                                         263.32 ms
+  P95 response time                                          1,172.17 ms
+  First request / cold-start observation     Approximately 22.14 seconds
+
+These are observations from one benchmark run, not a service-level
+guarantee. Render free-tier cold starts can substantially affect the
+first request.
+
+## Data Persistence
+
+Issue data is stored through `src/data/store.js` using a JSON file
+rather than a managed database.
+
+This keeps the project simple to run and demonstrate, but it has
+important limitations:
+
+-   JSON-file storage is not a substitute for a production database.
+-   Persistence on hosted platforms may be affected by restarts,
+    redeployments, or ephemeral filesystems.
+-   Concurrent writes and multi-instance scaling need a more robust
+    storage strategy.
+
+For production use, replace the JSON store with a database such as
+PostgreSQL or MySQL and add appropriate backup, migration, and
+operational practices.
+
+## Project Structure
+
+The confirmed storage module is:
+
+``` text
+src/
+└── data/
+    └── store.js
+```
+
+The broader project also contains the Express application, route/handler
+code, and tests. Update this section to match the exact directory layout
+in the repository before publishing if those paths differ.
+
+## Example Workflow
+
+1.  Check API availability with `GET /health`.
+2.  List existing issues with `GET /issues`.
+3.  Filter issues by status, priority, or service.
+4.  Create a new issue with `POST /issues`.
+5.  Retrieve or update it using its ID.
+6.  Delete a test issue when it is no longer needed.
+
+## Possible Improvements
+
+-   Replace JSON-file persistence with PostgreSQL or MySQL.
+-   Add pagination and sorting for larger issue collections.
+-   Introduce authentication and authorization.
+-   Add structured logging and request tracing.
+-   Add schema validation and a consistent error-response format.
+-   Add CI checks for tests and coverage.
+-   Add API documentation using OpenAPI/Swagger.
+-   Add integration tests against a dedicated test database.
+
+## Limitations
+
+-   The application is intended as a portfolio/demo project.
+-   The current persistence layer is JSON-file based.
+-   Hosted response times can vary, especially after inactivity.
+-   The benchmark numbers are specific to the test run and environment.
+
+## License
+
+No license is specified here. Add a `LICENSE` file and update this
+section if you intend to distribute the project under a particular
+open-source license.

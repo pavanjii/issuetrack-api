@@ -22,6 +22,17 @@ function createApp() {
     res.json({ status: "ok", uptime: process.uptime() });
   });
 
+  app.get("/", (req, res) => {
+  res.status(200).json({
+    name: "IssueTrack API",
+    status: "ok",
+    endpoints: {
+      health: "/health",
+      issues: "/issues",
+    },
+  });
+});
+
   app.use("/issues", issuesRouter);
 
   app.use(notFoundHandler);

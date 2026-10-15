@@ -1,3 +1,4 @@
+
 const express = require("express");
 const issuesRouter = require("./routes/issues");
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
@@ -7,10 +8,13 @@ function createApp() {
   app.use(express.json());
 
   app.get("/", (req, res) => {
-    res.json({
+    res.status(200).json({
       name: "IssueTrack API",
       status: "ok",
-      endpoints: { health: "/health", issues: "/issues" },
+      endpoints: {
+        health: "/health",
+        issues: "/issues",
+      },
     });
   });
 

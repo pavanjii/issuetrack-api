@@ -108,6 +108,21 @@ test("DELETE /issues/:id removes the issue", async () => {
   assert.equal(getAfter.status, 404);
 });
 
+
+test("GET / returns API information", async () => {
+  const response = await request(app).get("/");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.name, "IssueTrack API");
+  assert.equal(response.body.status, "ok");
+  assert.deepEqual(response.body.endpoints, {
+    health: "/health",
+    issues: "/issues",
+  });
+});
+
+
+
 test("unknown route returns a structured 404", async () => {
   const res = await request(app).get("/nope");
   assert.equal(res.status, 404);

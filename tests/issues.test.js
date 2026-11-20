@@ -472,3 +472,103 @@ test("GET /issues rejects a malformed authorization header", async () => {
 
   assert.equal(res.status, 401);
 });
+
+const jwt = require("jsonwebtoken");
+
+const LOGIN_BODY = { username: "test-admin", password: "TestPassword123!" };
+
+// Temporarily override env vars (undefined = delete), always restoring them.
+async function withEnv(overrides, fn) {
+  const saved = {};
+  for (const key of Object.keys(overrides)) {
+    saved[key] = process.env[key];
+    if (overrides[key] === undefined) delete process.env[key];
+    else process.env[key] = overrides[key];
+  }
+  try {
+    return await fn();
+  } finally {
+    for (const key of Object.keys(saved)) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+  }
+}
+
+test("POST /auth/token returns 500 when authentication is not configured", async () => {
+  for (const key of ["AUTH_USERNAME", "AUTH_PASSWORD_HASH", "JWT_SECRET"]) {
+    await withEnv({ [key]: undefined }, async () => {
+      const res = await supertest(app).post("/auth/token").send(LOGIN_BODY);
+      assert.equal(res.status, 500, `expected 500 when ${key} is missing`);
+      assert.equal(res.body.error, "Authentication is not configured");
+    });
+  }
+});
+
+test("POST /auth/token rejects non-string or missing credentials", async () => {
+  for (const body of [
+    { username: 123, password: LOGIN_BODY.password },
+    { username: LOGIN_BODY.username, password: 123 },
+    {},
+  ]) {
+    const res = await supertest(app).post("/auth/token").send(body);
+    assert.equal(res.status, 401);
+  }
+});
+
+test("POST /auth/token gives the same error for unknown user and wrong password", async () => {
+  const unknownUser = await supertest(app)
+    .post("/auth/token")
+    .send({ username: "nobody", password: LOGIN_BODY.password });
+  const wrongPassword = await supertest(app)
+    .post("/auth/token")
+    .send({ username: LOGIN_BODY.username, password: "WrongPassword123!" });
+
+  assert.equal(unknownUser.status, 401);
+  assert.equal(wrongPassword.status, 401);
+  assert.deepEqual(unknownUser.body, wrongPassword.body);
+});
+
+test("POST /auth/token defaults to a 1h expiry when JWT_EXPIRES_IN is unset", async () => {
+  await withEnv({ JWT_EXPIRES_IN: undefined }, async () => {
+    const res = await supertest(app).post("/auth/token").send(LOGIN_BODY);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.expiresIn, "1h");
+  });
+});
+
+test("GET /issues returns 500 when JWT_SECRET is missing on the server", async () => {
+  await withEnv({ JWT_SECRET: undefined }, async () => {
+    const res = await supertest(app)
+      .get("/issues")
+      .set("Authorization", `Bearer ${authToken}`);
+    assert.equal(res.status, 500);
+  });
+});
+
+test("GET /issues rejects a token signed with the wrong secret", async () => {
+  const forged = jwt.sign({ sub: "test-admin" }, "some-other-secret");
+  const res = await supertest(app)
+    .get("/issues")
+    .set("Authorization", `Bearer ${forged}`);
+  assert.equal(res.status, 401);
+});
+
+test("GET /issues rejects an expired token", async () => {
+  const expired = jwt.sign({ sub: "test-admin" }, process.env.JWT_SECRET, {
+    expiresIn: -10,
+  });
+  const res = await supertest(app)
+    .get("/issues")
+    .set("Authorization", `Bearer ${expired}`);
+  assert.equal(res.status, 401);
+});
+
+test("GET /issues rejects an unsigned (alg: none) token", async () => {
+  const enc = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
+  const unsigned = `${enc({ alg: "none", typ: "JWT" })}.${enc({ sub: "test-admin" })}.`;
+  const res = await supertest(app)
+    .get("/issues")
+    .set("Authorization", `Bearer ${unsigned}`);
+  assert.equal(res.status, 401);
+});

@@ -1,10 +1,17 @@
+require("dotenv").config();
 
 const express = require("express");
 const issuesRouter = require("./routes/issues");
-const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
+const authRouter = require("./routes/auth");
+const authenticateToken = require("./middleware/authMiddleware");
+const {
+  errorHandler,
+  notFoundHandler,
+} = require("./middleware/errorHandler");
 
 function createApp() {
   const app = express();
+
   app.use(express.json());
 
   app.get("/", (req, res) => {
@@ -13,6 +20,7 @@ function createApp() {
       status: "ok",
       endpoints: {
         health: "/health",
+        auth: "/auth/token",
         issues: "/issues",
       },
     });
@@ -22,7 +30,9 @@ function createApp() {
     res.json({ status: "ok", uptime: process.uptime() });
   });
 
-  app.use("/issues", issuesRouter);
+  app.use("/auth", authRouter);
+
+  app.use("/issues", authenticateToken, issuesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

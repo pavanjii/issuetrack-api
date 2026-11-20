@@ -572,3 +572,29 @@ test("GET /issues rejects an unsigned (alg: none) token", async () => {
     .set("Authorization", `Bearer ${unsigned}`);
   assert.equal(res.status, 401);
 });
+test("responses include Helmet security headers and hide X-Powered-By", async () => {
+  const res = await supertest(app).get("/health");
+
+  assert.equal(res.status, 200);
+  assert.equal(res.headers["x-powered-by"], undefined);
+  assert.equal(res.headers["x-content-type-options"], "nosniff");
+  assert.equal(res.headers["x-frame-options"], "SAMEORIGIN");
+  assert.match(res.headers["strict-transport-security"], /max-age=/);
+  assert.ok(res.headers["content-security-policy"]);
+});
+
+test("security headers are also set on 401 responses from protected routes", async () => {
+  const res = await supertest(app).get("/issues");
+
+  assert.equal(res.status, 401);
+  assert.equal(res.headers["x-powered-by"], undefined);
+  assert.equal(res.headers["x-content-type-options"], "nosniff");
+});
+
+test("security headers are also set on 404 responses", async () => {
+  const res = await supertest(app).get("/nope");
+
+  assert.equal(res.status, 404);
+  assert.equal(res.headers["x-powered-by"], undefined);
+  assert.equal(res.headers["x-content-type-options"], "nosniff");
+});

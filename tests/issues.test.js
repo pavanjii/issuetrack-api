@@ -18,7 +18,7 @@ const supertest = require("supertest");
 const createApp = require("../src/app");
 const store = require("../src/data/store");
 
-const app = createApp();
+const app = createApp({ rateLimit: { generalMax: 100000, authMax: 100000 } });
 
 let authToken;
 
@@ -597,4 +597,42 @@ test("security headers are also set on 404 responses", async () => {
   assert.equal(res.status, 404);
   assert.equal(res.headers["x-powered-by"], undefined);
   assert.equal(res.headers["x-content-type-options"], "nosniff");
+});
+test("auth limiter returns 429 after too many failed logins", async () => {
+  const limited = createApp({ rateLimit: { authMax: 3 } });
+  const bad = { username: "test-admin", password: "WrongPassword123!" };
+
+  for (let i = 0; i < 3; i++) {
+    const res = await supertest(limited).post("/auth/token").send(bad);
+    assert.equal(res.status, 401);
+  }
+
+  const blocked = await supertest(limited).post("/auth/token").send(bad);
+  assert.equal(blocked.status, 429);
+  assert.ok(blocked.body.error);
+});
+
+test("auth limiter does not count successful logins", async () => {
+  const limited = createApp({ rateLimit: { authMax: 2 } });
+  const good = { username: "test-admin", password: "TestPassword123!" };
+
+  for (let i = 0; i < 5; i++) {
+    const res = await supertest(limited).post("/auth/token").send(good);
+    assert.equal(res.status, 200);
+  }
+});
+
+test("general limiter returns 429 but never blocks /health", async () => {
+  const limited = createApp({ rateLimit: { generalMax: 3 } });
+
+  for (let i = 0; i < 3; i++) {
+    const res = await supertest(limited).get("/issues");
+    assert.equal(res.status, 401);
+  }
+
+  const blocked = await supertest(limited).get("/issues");
+  assert.equal(blocked.status, 429);
+
+  const health = await supertest(limited).get("/health");
+  assert.equal(health.status, 200);
 });

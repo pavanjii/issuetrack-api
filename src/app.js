@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const issuesRouter = require("./routes/issues");
 const authRouter = require("./routes/auth");
 const authenticateToken = require("./middleware/authMiddleware");
@@ -10,9 +11,32 @@ const {
   notFoundHandler,
 } = require("./middleware/errorHandler");
 
-function createApp() {
+function createApp(options = {}) {
+  const limits = {
+    windowMs: 15 * 60 * 1000,
+    generalMax: 100,
+    authMax: 10,
+    ...options.rateLimit,
+  };
+
   const app = express();
+
+  // Number of reverse proxies in front of the app (0 locally).
+  app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS) || 0);
+
   app.use(helmet());
+
+  app.use(
+    rateLimit({
+      windowMs: limits.windowMs,
+      limit: limits.generalMax,
+      standardHeaders: true,
+      legacyHeaders: false,
+      skip: (req) => req.path === "/health",
+      message: { error: "Too many requests, please try again later" },
+    })
+  );
+
   app.use(express.json());
 
   app.get("/", (req, res) => {
@@ -31,7 +55,17 @@ function createApp() {
     res.json({ status: "ok", uptime: process.uptime() });
   });
 
-  app.use("/auth", authRouter);
+  // Only failed logins count toward this limit.
+  const authLimiter = rateLimit({
+    windowMs: limits.windowMs,
+    limit: limits.authMax,
+    skipSuccessfulRequests: true,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many failed login attempts, please try again later" },
+  });
+
+  app.use("/auth", authLimiter, authRouter);
 
   app.use("/issues", authenticateToken, issuesRouter);
 

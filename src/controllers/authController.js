@@ -8,18 +8,6 @@ async function login(req, res) {
   const passwordHash = process.env.AUTH_PASSWORD_HASH;
   const jwtSecret = process.env.JWT_SECRET;
 
-  // TEMPORARY DIAGNOSTIC - remove after debugging. Logs lengths and booleans only.
-  console.log("AUTH-DIAG", JSON.stringify({
-    usernameMatches: typeof username === "string" && username === configuredUsername,
-    configuredUsernameLength: configuredUsername ? configuredUsername.length : null,
-    receivedUsernameLength: typeof username === "string" ? username.length : null,
-    hashLength: passwordHash ? passwordHash.length : null,
-    hashPrefix: passwordHash ? passwordHash.slice(0, 4) : null,
-    hashHasWhitespaceOrQuote: passwordHash ? /["'\s]/.test(passwordHash) : null,
-    passwordIsString: typeof password === "string",
-    compareResult: typeof password === "string" && passwordHash ? await bcrypt.compare(password, passwordHash) : null,
-  }));
-
   if (!configuredUsername || !passwordHash || !jwtSecret) {
     return res.status(500).json({
       error: "Authentication is not configured",

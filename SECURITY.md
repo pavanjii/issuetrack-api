@@ -48,7 +48,7 @@ These are real gaps, not hypothetical ones.
 7. **No audit logging.** There is no record of authentication attempts or data changes beyond default platform logs.
 8. **JSON file storage.** There is no locking or concurrent-write protection, and on hosting with an ephemeral filesystem data may not survive restarts or redeploys. It is not suitable for data that matters.
 9. **Development dependency advisories.** At the last audit, the production dependency audit was clean, while four moderate advisories remained in the development-only dependency chain (`c8`, `test-exclude`, `glob`, `minimatch`). They do not ship in production. Audits should be re-run periodically.
-10. **Not yet done:** an OWASP ZAP baseline scan, and further input-validation hardening. This document will be updated when those are completed.
+10. **Scanning scope:** A passive-only OWASP ZAP session was run on 21 November 2026 by browsing the public endpoints; no active scan was run. The Medium alert came from a Microsoft Edge background request (a third-party host contacted by the test browser), and the Sites tree showed the test browser also contacting other third-party hosts. The remaining Low and Informational alerts were not each traced to a specific host. Direct header checks of `/`, `/health`, `/issues` and an unknown path showed HSTS and `nosniff` present and no cookies or CORS headers. Authenticated endpoints were not scanned by ZAP and are covered by the automated tests only. Further input-validation hardening is still planned.
 
 ## Operational notes
 

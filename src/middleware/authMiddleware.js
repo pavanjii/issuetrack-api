@@ -20,7 +20,7 @@ function authenticateToken(req, res, next) {
       });
     }
 
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret, { algorithms: ["HS256"] });
 
     req.user = {
       username: decoded.sub,

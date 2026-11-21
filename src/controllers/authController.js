@@ -35,7 +35,7 @@ async function login(req, res) {
   const token = jwt.sign(
     { sub: configuredUsername },
     jwtSecret,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "1h" }
+    { algorithm: "HS256", expiresIn: process.env.JWT_EXPIRES_IN || "1h" }
   );
 
   return res.status(200).json({

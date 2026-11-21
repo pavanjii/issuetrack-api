@@ -636,3 +636,18 @@ test("general limiter returns 429 but never blocks /health", async () => {
   const health = await supertest(limited).get("/health");
   assert.equal(health.status, 200);
 });
+test("GET /issues rejects a token signed with the correct secret but a different algorithm", async () => {
+  const wrongAlg = jwt.sign({ sub: "test-admin" }, process.env.JWT_SECRET, {
+    algorithm: "HS512",
+  });
+  const res = await supertest(app)
+    .get("/issues")
+    .set("Authorization", `Bearer ${wrongAlg}`);
+  assert.equal(res.status, 401);
+});
+
+test("POST /auth/token issues HS256 tokens", async () => {
+  const res = await supertest(app).post("/auth/token").send(LOGIN_BODY);
+  assert.equal(res.status, 200);
+  assert.equal(jwt.decode(res.body.token, { complete: true }).header.alg, "HS256");
+});

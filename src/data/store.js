@@ -13,20 +13,41 @@ const crypto = require("crypto");
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, "issues.json");
 
+// In-memory copy of the file. It is reused until the file changes on disk,
+// so reads no longer re-read and re-parse the whole file on every request.
+let cache = null; // { issues, mtimeMs, size }
+
+function fileSignature() {
+  try {
+    const { mtimeMs, size } = fs.statSync(DB_PATH);
+    return { mtimeMs, size };
+  } catch {
+    return null; // file does not exist
+  }
+}
+
 function readAll() {
-  if (!fs.existsSync(DB_PATH)) {
+  const sig = fileSignature();
+  if (sig && cache && cache.mtimeMs === sig.mtimeMs && cache.size === sig.size) {
+    return cache.issues.slice(); // copy, so callers can't mutate the cache
+  }
+  if (!sig) {
     fs.writeFileSync(DB_PATH, "[]", "utf-8");
   }
   const raw = fs.readFileSync(DB_PATH, "utf-8");
+  let issues;
   try {
-    return JSON.parse(raw);
+    issues = JSON.parse(raw);
   } catch {
-    return [];
+    issues = [];
   }
+  cache = { issues, ...fileSignature() };
+  return issues.slice();
 }
 
 function writeAll(issues) {
   fs.writeFileSync(DB_PATH, JSON.stringify(issues, null, 2), "utf-8");
+  cache = { issues, ...fileSignature() };
 }
 
 function list(filters = {}) {

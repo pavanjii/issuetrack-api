@@ -14,8 +14,8 @@ const {
 function createApp(options = {}) {
   const limits = {
     windowMs: 15 * 60 * 1000,
-    generalMax: 100,
-    authMax: 10,
+    generalMax: Number(process.env.RATE_LIMIT_GENERAL_MAX) || 100,
+    authMax: Number(process.env.RATE_LIMIT_AUTH_MAX) || 10,
     ...options.rateLimit,
   };
 
